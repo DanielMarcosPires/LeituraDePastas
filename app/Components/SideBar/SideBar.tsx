@@ -1,32 +1,75 @@
 "use client"
-import { FaFolderPlus } from 'react-icons/fa'
+import { FaFolderPlus, FaFolder, FaFile, FaFolderOpen } from 'react-icons/fa'
+import { useEffect, useState } from 'react'
 
-interface InfoFolders{
-    name:string,
-    path:string,
-    isDirectory:Boolean,
-    children:[{}]
+interface InfoFolder {
+    name: string
+    path: string
+    isDirectory: boolean
+    children?: InfoFolder[]
 }
 
-export default function SideBar() {
-    async function createNewFolder() {
-        const response = await fetch("/api/create-folder", { method: "POST" });
-        const data = await response.json();
+function FolderItem({ folder, level = 0 }: { folder: InfoFolder; level?: number }) {
+    const [open, setOpen] = useState(false)
+    const hasExtension = /\.[^./\\]+$/.test(folder.name)
+    const hasChildren = !!(folder.children && folder.children.length > 0)
 
-        console.log(data);
-    }
-
-    async function getInfoFolders() {
-        const response = await fetch("/api/read-folder", { method: "GET" });
-        const data = await response.json();
-
-        console.log(data.folders)
+    function toggle(e: React.MouseEvent) {
+        e.stopPropagation()
+        if (hasChildren) setOpen((s) => !s)
     }
 
     return (
-        <aside className="bg-cyan-950 col-span-3">
+        <div style={{ paddingLeft: `${level * 12}px` }} className="py-1">
+            <div
+                onClick={toggle}
+                className="flex px-4 py-2 hover:bg-black cursor-pointer items-center gap-2"
+            >
+                {hasExtension ? (
+                    <FaFile size={16} />
+                ) : open ? (
+                    <FaFolderOpen size={16} />
+                ) : (
+                    <FaFolder size={16} />
+                )}
+                <span className="text-lg">{folder.name}</span>
+            </div>
+            {hasChildren && open && (
+                <div>
+                    {folder.children!.map((child) => (
+                        <FolderItem key={child.path} folder={child} level={level + 1} />
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+export default function SideBar() {
+    const [folders, setFolders] = useState<InfoFolder[]>([])
+
+    async function createNewFolder() {
+        const response = await fetch('/api/create-folder', { method: 'POST' })
+        const data = await response.json()
+        console.log(data)
+        await getInfoFolders()
+    }
+
+    async function getInfoFolders() {
+        const response = await fetch('/api/read-folder', { method: 'GET' })
+        const data = await response.json()
+        // assume data.folders is an array of InfoFolder
+        setFolders(data.folders || [])
+    }
+
+    useEffect(() => {
+        getInfoFolders()
+    }, [])
+
+    return (
+        <aside className="bg-gray-900 col-span-3">
             <header className="flex items-end justify-between pt-6 pb-2 px-5 bg-cyan-900">
-                <h2 className="text-2xl">Folders: </h2>
+                <h2 className="text-2xl">Storage: </h2>
                 <div className="flex justify-end">
                     <button className="flex items-center gap-3 bg-amber-700 p-2 rounded-xl" onClick={createNewFolder}>
                         <p>New Folder</p>
@@ -34,7 +77,13 @@ export default function SideBar() {
                     </button>
                 </div>
             </header>
-            <button onClick={getInfoFolders}>test</button>
+            <main className="p-4">
+                {folders.length === 0 ? (
+                    <p className="text-sm text-gray-300">No folders found</p>
+                ) : (
+                    folders.map((f) => <FolderItem key={f.path} folder={f} />)
+                )}
+            </main>
         </aside>
     )
 }
