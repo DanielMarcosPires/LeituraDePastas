@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync } from "node:fs";
 
-export class genFolderSystem{
+export class GenFolderSystem{
     defaultFolderName = "Storage";
 
     constructor(folderName=this.defaultFolderName){

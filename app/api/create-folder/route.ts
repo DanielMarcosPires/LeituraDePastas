@@ -1,15 +1,28 @@
-import { NextResponse } from "next/server";
-import { genFolderSystem } from "../../module/genFolder";
+import { NextResponse } from "next/server"
+import { GenFolderSystem } from "../../module/genFolder"
 
 export async function POST() {
   try {
-    const folder = new genFolderSystem();
-    const result = folder.genFolder({
-        folderName:"viewFolders"
-    });
+    const folderSystem = new GenFolderSystem()
 
-    return NextResponse.json(result);
+    const result = await folderSystem.genFolder({
+      folderName: "viewFolders",
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: result,
+    })
+
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create folder." }, { status: 500 });
+    console.error(error)
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to create folder.",
+      },
+      { status: 500 }
+    )
   }
 }

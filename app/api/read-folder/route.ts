@@ -1,62 +1,63 @@
-import fs from "fs";
-import { readdir } from "fs/promises";
-import path, { join } from "path";
+import { readdir } from "fs/promises"
+import path from "path"
 
+type FolderNode = {
+  name: string
+  path: string
+  isDirectory: boolean
+  children?: FolderNode[]
+}
 
-class readFolder {
-    async ReadFolder(path = "./Storage") {
-        try {
-            const folders = await readdir(path, { withFileTypes: true })
+class FolderReader {
+  constructor(private basePath = "./Storage") {}
 
-            console.log("Folder's Storage found!")
-            return folders.map(dirent => ({
-                name: dirent.name,
-                path: join(path, dirent.name),
-                isDirectory: dirent.isDirectory(),
-            }))
-        } catch (error) {
-            console.error(error)
-            return []
+  async readFolder(dirPath = this.basePath): Promise<FolderNode[]> {
+    const entries = await readdir(dirPath, { withFileTypes: true })
+
+    return entries.map((entry) => {
+      const fullPath = path.join(dirPath, entry.name)
+
+      return {
+        name: entry.name,
+        path: fullPath,
+        isDirectory: entry.isDirectory(),
+      }
+    })
+  }
+
+  async readTree(dirPath = this.basePath): Promise<FolderNode[]> {
+    const entries = await this.readFolder(dirPath)
+
+    return Promise.all(
+      entries.map(async (entry) => {
+        if (!entry.isDirectory) return entry
+
+        const children = await this.readTree(entry.path)
+
+        return {
+          ...entry,
+          children,
         }
-    }
-
-    async cascadeReadingFolder(folderDataPromise:any) {
-        try {
-            const folderData = await folderDataPromise
-            const result = []
-
-            for (const item of folderData) {
-                if (item.isDirectory) {
-                    const subfolders = await readdir(item.path, { withFileTypes: true })
-                    const children = subfolders.map(dirent => ({
-                        name: dirent.name,
-                        path: join(item.path, dirent.name),
-                        isDirectory: dirent.isDirectory(),
-                    }))
-                    item.children = await this.cascadeReadingFolder(Promise.resolve(children))
-                }
-                result.push(item)
-            }
-
-            return result
-        } catch (error) {
-            console.error(error)
-            return []
-        }
-    }
+      })
+    )
+  }
 }
 
 export async function GET() {
-  const reading = new readFolder()
-  const folderData = reading.ReadFolder()
   try {
-    const folders = await reading.cascadeReadingFolder(folderData)
+    const reader = new FolderReader()
+
+    const folders = await reader.readTree()
+
     return Response.json({
       folders,
-    });
-  } catch (erro) {
-    return Response.json({
-      erro: "Erro ao ler pasta",
-    });
+    })
+  } catch (error) {
+    console.error(error)
+
+    return Response.json(
+      { error: "Erro ao ler pasta" },
+      { status: 500 }
+    )
   }
 }

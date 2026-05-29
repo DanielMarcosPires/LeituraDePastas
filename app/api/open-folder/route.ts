@@ -1,21 +1,25 @@
-import { NextRequest, NextResponse } from "next/server"
-import { exec } from "child_process"
+import { spawn } from "child_process"
 import path from "path"
+import { NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export async function POST() {
+  const folderPath = path.join(process.cwd(), "Storage")
+
   try {
-    const folderPath = path.join(process.cwd(), 'Storage')
-    
-    // Usar explorer.exe para abrir a pasta no Windows
-    exec(`explorer "${folderPath}"`, (error) => {
-      if (error) {
-        console.error('Erro ao abrir pasta:', error)
-      }
-    })
+    const cmd = process.platform === "win32"
+      ? "explorer"
+      : process.platform === "darwin"
+      ? "open"
+      : "xdg-open"
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Abrindo pasta: ${folderPath}` 
+    spawn(cmd, [folderPath], {
+      detached: true,
+      stdio: "ignore",
+    }).unref()
+
+    return NextResponse.json({
+      success: true,
+      message: `Abrindo pasta: ${folderPath}`,
     })
   } catch (error) {
     return NextResponse.json(
